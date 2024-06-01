@@ -2,7 +2,7 @@
 **Data Analyst | Data Scientist**
 
 +254 722 254 947 | jmjmngugi@gmail.com | Nairobi, Kenya  
-[LinkedIn](https://www.linkedin.com/in/mwangingugi/) | [GitHub](https://github.com/jmjmngugi)
+[LinkedIn](www.linkedin.com/in/mwangijohn) | [GitHub](https://github.com/rohns)
 
 ---
 

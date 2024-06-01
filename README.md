@@ -46,31 +46,24 @@ Bachelor of Actuarial Science | 2nd Class Honors | December 2018
 
 ## SKILLS
 
-- Business Analytics
-- Predictive Modeling
-- Data Management
-- Statistical Modeling
-- Algorithm Development
-- Google Cloud Platform (GCP)
-- Google BigQuery
-- Microsoft Azure
-- Machine Learning
-- Google Analytics
-- Microsoft Power BI
-- Data Transformation
-- Data Analytics
-- Tableau
-- R (Programming Language)
-- Databases
-- Python (Programming Language)
-- SQL
-- Data Collection
-- Data Extraction
-- Data Loading
-- Data Transformation
-- Exploratory Data Analysis
-- Data Import/Export
-- Microsoft Excel
+|                                     |                                |
+|-------------------------------------|--------------------------------|
+| Business Analytics                  | Data Analytics                 |
+| Predictive Modeling                 | Tableau                        |
+| Data Management                     | R (Programming Language)       |
+| Statistical Modeling                | Databases                      |
+| Algorithm Development               | Python (Programming Language)  |
+| Google Cloud Platform (GCP)         | SQL                            |
+| Google BigQuery                     | Data Collection                |
+| Microsoft Azure                     | Data Extraction                |
+| Machine Learning                    | Data Loading                   |
+| Google Analytics                    | Data Transformation            |
+| Microsoft Power BI                  | Exploratory Data Analysis      |
+| Data Transformation                 | Data Import/Export             |
+| MLOps                               | Microsoft Excel                |
+| Dockers                             | Kubernetes                     |
+| MLFlow                              |                                |
+
 
 ## PROJECTS
 

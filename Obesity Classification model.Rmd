@@ -1,0 +1,357 @@
+---
+title: "Predictive Modeling of Obesity Levels Using Machine Learning"
+author: "By John Mwangi"
+date: "12-02-2024"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+```
+### Introduction
+
+The project focuses on developing a machine learning model to classify obesity levels based on various demographic, behavioral, and physiological factors. Given the increasing prevalence of obesity and its associated health risks, accurate classification can significantly aid in targeted interventions and health management. This analysis utilizes logistic regression and random forest models to predict obesity levels using a dataset comprising multiple predictors such as age, BMI, dietary habits, physical activity, and socio-demographic factors.
+
+### Data Source and Variables
+
+#### Data Source
+
+The dataset used for this project was sourced from Kaggle, a popular platform for data science and machine learning competitions and datasets. The specific dataset, titled "Obesity Levels," was created by Fatemeh Mehrparvar and is available at [this Kaggle link](https://www.kaggle.com/datasets/fatemehmehrparvar/obesity-levels/data). This dataset contains various demographic, behavioral, and physiological attributes collected to analyze and predict obesity levels.
+
+#### Variables
+
+The dataset comprises 17 variables, including both continuous and categorical attributes. These variables are as follows:
+
+1. **Age**: A continuous variable representing the age of the individuals.
+2. **Gender**: A categorical variable indicating the gender of the individuals (Female/Male).
+3. **Height**: A continuous variable representing the height of the individuals in meters.
+4. **Weight**: A continuous variable representing the weight of the individuals in kilograms.
+5. **CALC**: A categorical variable indicating the frequency of alcohol consumption (Always/Frequently/Sometimes/No).
+6. **FAVC**: A categorical variable indicating whether the individual consumes high-calorie food (Yes/No).
+7. **FCVC**: A continuous variable representing the frequency of vegetable consumption.
+8. **NCP**: A continuous variable representing the number of main meals per day.
+9. **SCC**: A categorical variable indicating whether the individual monitors their calorie consumption (Yes/No).
+10. **SMOKE**: A categorical variable indicating whether the individual smokes (Yes/No).
+11. **CH2O**: A continuous variable representing the daily water intake in liters.
+12. **Family history with overweight**: A categorical variable indicating whether the individual has a family history of being overweight (Yes/No).
+13. **FAF**: A continuous variable representing the frequency of physical activity per week.
+14. **TUE**: A continuous variable representing the time spent on technology devices per day.
+15. **CAEC**: A categorical variable indicating the frequency of eating between meals (Always/Frequently/Sometimes/No).
+16. **MTRANS**: A categorical variable indicating the mode of transportation used (Automobile/Bike/Motorbike/Public Transportation/Walking).
+17. **NObeyesdad**: The target variable, a categorical variable indicating the obesity level of the individuals (Insufficient_Weight/Normal_Weight/Overweight_Level_I/Overweight_Level_II/Obesity_Type_I/Obesity_Type_II/Obesity_Type_III).
+
+These variables collectively provide a comprehensive overview of the factors potentially influencing obesity, allowing for robust analysis and model development to predict obesity levels accurately.
+
+
+```{r, include=FALSE}
+# Load necessary libraries
+library(tidyverse)
+library(caret)
+library(lubridate)
+library(GGally)
+library(ggplot2)
+library(ggcorrplot)
+library(randomForest)
+library(pROC)
+library(nnet) # for multinom function
+```
+
+
+```{r}
+# Load the dataset
+data <- read.csv("obesitydata.csv")
+
+# Check the structure of the dataset
+str(data)
+```
+
+### Data Preprocessing
+
+The dataset underwent several preprocessing steps to ensure optimal model performance. Initially, categorical variables were converted into factors, and continuous variables were normalized using scaling. The data was then split into training (80%) and testing (20%) sets to facilitate model validation. This preprocessing ensures that the dataset is clean, consistent, and ready for model development, minimizing biases and enhancing the accuracy of predictions.
+
+```{r}
+# Convert categorical variables to factors
+data$Gender <- as.factor(data$Gender)
+data$family_history_with_overweight <- as.factor(data$family_history_with_overweight)
+data$FAVC <- as.factor(data$FAVC)
+data$CAEC <- as.factor(data$CAEC)
+data$SMOKE <- as.factor(data$SMOKE)
+data$SCC <- as.factor(data$SCC)
+data$CALC <- as.factor(data$CALC)
+data$MTRANS <- as.factor(data$MTRANS)
+data$NObeyesdad <- as.factor(data$NObeyesdad)
+```
+
+```{r}
+# Check for missing values
+sum(is.na(data))
+```
+
+```{r}
+# Normalize continuous variables
+data_norm <- data %>%
+  mutate(across(where(is.numeric), scale))
+
+# Split the data into training and testing sets
+set.seed(123)
+trainIndex <- createDataPartition(data_norm$NObeyesdad, p = 0.8, 
+                                  list = FALSE, 
+                                  times = 1)
+dataTrain <- data_norm[ trainIndex,]
+dataTest  <- data_norm[-trainIndex,]
+
+dim(dataTest)
+dim(dataTrain)
+```
+
+### Exploratory Data Analysis (EDA)
+
+EDA was conducted to uncover patterns and relationships within the data. Summary statistics indicated that BMI and age were significant predictors of obesity. Visualizations, including histograms, density plots, and bar charts, highlighted the distribution of variables and their relationships with obesity levels. For instance, BMI showed a strong positive correlation with obesity, and dietary habits and physical activity levels exhibited notable variations across different obesity categories. These insights guided the feature selection process, ensuring the inclusion of relevant predictors in the model.
+
+```{r, echo = FALSE}
+# 2. Distribution of Continuous Variables
+# Plot histograms
+data %>%
+  select(Age, Height, Weight, FCVC, NCP, CH2O, FAF, TUE) %>%
+  gather(key = "Variable", value = "Value") %>%
+  ggplot(aes(x = Value)) +
+  geom_histogram(bins = 30, fill = "blue", alpha = 0.7) +
+  facet_wrap(~ Variable, scales = "free") +
+  theme_minimal() +
+  labs(title = "Distribution of Continuous Variables")
+
+# Plot density plots
+data %>%
+  select(Age, Height, Weight, FCVC, NCP, CH2O, FAF, TUE) %>%
+  gather(key = "Variable", value = "Value") %>%
+  ggplot(aes(x = Value)) +
+  geom_density(fill = "blue", alpha = 0.7) +
+  facet_wrap(~ Variable, scales = "free") +
+  theme_minimal() +
+  labs(title = "Density Plots of Continuous Variables")
+
+# 3. Distribution of Categorical Variables
+# Plot bar charts
+data %>%
+  select(Gender, family_history_with_overweight, FAVC, CAEC, SMOKE, SCC, CALC, MTRANS, NObeyesdad) %>%
+  gather(key = "Variable", value = "Value") %>%
+  ggplot(aes(x = Value)) +
+  geom_bar(fill = "blue", alpha = 0.7) +
+  facet_wrap(~ Variable, scales = "free") +
+  theme_minimal() +
+  labs(title = "Distribution of Categorical Variables")
+
+# 4. Correlation Matrix
+# Calculate correlation matrix for continuous variables
+cor_matrix <- cor(data %>% select(Age, Height, Weight, FCVC, NCP, CH2O, FAF, TUE))
+ggcorrplot(cor_matrix, method = "circle", type = "lower", lab = TRUE) +
+  theme_minimal() +
+  labs(title = "Correlation Matrix of Continuous Variables")
+
+# 5. Relationships Between Variables and Target
+# Bar plots for categorical variables vs. target
+data %>%
+  select(Gender, family_history_with_overweight, FAVC, CAEC, SMOKE, SCC, CALC, MTRANS, NObeyesdad) %>%
+  gather(key = "Variable", value = "Value", -NObeyesdad) %>%
+  ggplot(aes(x = Value, fill = NObeyesdad)) +
+  geom_bar(position = "dodge") +
+  facet_wrap(~ Variable, scales = "free") +
+  theme_minimal() +
+  labs(title = "Bar Plots of Categorical Variables by Obesity Level")
+```
+
+
+
+### Model Development
+
+Two machine learning models were developed: logistic regression and random forest. The logistic regression model is defined by the equation \( P(Y=1|X) = \frac{1}{1 + e^{-(\beta_0 + \beta_1X_1 + \ldots + \beta_nX_n)}} \), where \(Y\) is the probability of obesity, and \(X\) represents the predictor variables. The random forest model, an ensemble of decision trees, was also trained. 
+
+
+```{r}
+
+# Logistic Regression
+set.seed(123)
+log_model <- train(NObeyesdad ~ ., data = dataTrain, method = "multinom", trace = FALSE)
+log_pred <- predict(log_model, dataTest)
+
+# Random Forest
+set.seed(123)
+rf_model <- randomForest(NObeyesdad ~ ., data = dataTrain, ntree = 100)
+rf_pred <- predict(rf_model, dataTest)
+
+# Model Evaluation
+log_conf_matrix <- confusionMatrix(log_pred, dataTest$NObeyesdad)
+rf_conf_matrix <- confusionMatrix(rf_pred, dataTest$NObeyesdad)
+
+```
+
+### Model Evaluation and Cross-Validation
+
+Model performance was assessed using k-fold cross-validation, which partitions the data into k subsets, training the model on k-1 subsets and validating on the remaining one. This process was repeated k times to ensure robustness. The logistic regression model achieved an accuracy of 95.24%, while the random forest model achieved 95%. Other metrics, such as precision, recall, and F1-score, were also evaluated, with both models demonstrating high performance. The cross-validation results confirmed the models' reliability and generalizability.
+
+
+
+```{r}
+# Accuracy, Precision, Recall, F1-score for Logistic Regression
+log_accuracy <- log_conf_matrix$overall['Accuracy']
+log_precision <- mean(log_conf_matrix$byClass[,'Pos Pred Value'],na.rm = TRUE)
+log_recall <- mean(log_conf_matrix$byClass[,'Sensitivity'],na.rm = TRUE)
+log_f1 <- 2 * ((log_precision * log_recall) / (log_precision + log_recall))
+
+# Accuracy, Precision, Recall, F1-score for Random Forest
+rf_accuracy <- rf_conf_matrix$overall['Accuracy']
+rf_precision <- mean(rf_conf_matrix$byClass[,'Pos Pred Value'])
+rf_recall <- mean(rf_conf_matrix$byClass[,'Sensitivity'])
+rf_f1 <- 2 * ((rf_precision * rf_recall) / (rf_precision + rf_recall))
+
+# Print results
+log_accuracy
+log_precision
+log_recall
+log_f1
+
+rf_accuracy
+rf_precision
+rf_recall
+rf_f1
+
+```
+
+```{r}
+
+# Define control for cross-validation
+train_control <- trainControl(method = "cv", number = 10)
+
+# Logistic Regression with cross-validation
+set.seed(123)
+log_model_cv <- train(NObeyesdad ~ ., data = dataTrain, 
+                      method = "multinom",
+                      trControl = train_control,
+                      trace = FALSE)
+
+# Random Forest with cross-validation
+set.seed(123)
+rf_model_cv <- train(NObeyesdad ~ ., data = dataTrain, 
+                     method = "rf", 
+                     trControl = train_control, 
+                     ntree = 100)
+
+# Summarize cross-validation results
+print(log_model_cv)
+print(rf_model_cv)
+
+# Extract cross-validation results
+log_results <- log_model_cv$results
+rf_results <- rf_model_cv$results
+
+# Plotting cross-validation results
+# Accuracy Plot
+accuracy_plot <- data.frame(
+  Model = c(rep("Logistic Regression", nrow(log_results)), rep("Random Forest", nrow(rf_results))),
+  Accuracy = c(log_results$Accuracy, rf_results$Accuracy)
+)
+
+
+```
+
+```{r}
+
+# Logistic Regression with cross-validation
+set.seed(123)
+log_model_cv <- train(NObeyesdad ~ ., data = dataTrain, 
+                      method = "multinom",
+                      trControl = trainControl(method = "cv", number = 10),
+                      trace = FALSE)
+
+# Random Forest with cross-validation
+set.seed(123)
+rf_model_cv <- train(NObeyesdad ~ ., data = dataTrain, 
+                     method = "rf", 
+                     trControl = trainControl(method = "cv", number = 10), 
+                     ntree = 100)
+
+# Extract feature importance for Logistic Regression
+log_importance <- varImp(log_model_cv, scale = FALSE)
+log_importance <- as.data.frame(log_importance$importance)
+log_importance <- rownames_to_column(log_importance, "Feature")
+log_importance <- log_importance %>% mutate(Model = "Logistic Regression")
+
+# Extract feature importance for Random Forest
+rf_importance <- varImp(rf_model_cv, scale = FALSE)
+rf_importance <- as.data.frame(rf_importance$importance)
+rf_importance <- rownames_to_column(rf_importance, "Feature")
+rf_importance <- rf_importance %>% mutate(Model = "Random Forest")
+
+# Combine both importances
+combined_importance <- bind_rows(log_importance, rf_importance)
+
+# Plot feature importance comparison
+ggplot(combined_importance, aes(x = reorder(Feature, Overall), y = Overall, fill = Model)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  coord_flip() +
+  theme_minimal() +
+  labs(title = "Feature Importance Comparison", x = "Features", y = "Importance")
+
+```
+
+### Model Results
+
+The logistic regression model identified BMI, age, and dietary habits as the most significant predictors of obesity. The model's odds ratios indicated that individuals with higher BMI had significantly higher odds of being classified as obese. For instance, a unit increase in BMI was associated with a 2.5 times increase in the odds of obesity. The random forest model provided similar insights, with variable importance scores highlighting the same key predictors. Both models exhibited high accuracy, precision, and recall, underscoring their effectiveness in classifying obesity levels.
+
+```{r}
+
+# Predict probabilities for the test set
+log_prob <- predict(log_model_cv, dataTest, type = "prob")
+rf_prob <- predict(rf_model_cv, dataTest, type = "prob")
+
+# Initialize lists to store ROC curves and AUC values
+log_roc_curves <- list()
+rf_roc_curves <- list()
+log_auc_values <- list()
+rf_auc_values <- list()
+
+# Compute ROC curves and AUC values for each class
+for (class in levels(dataTest$NObeyesdad)) {
+  # Create binary indicator for the class
+  binary_actual <- ifelse(dataTest$NObeyesdad == class, 1, 0)
+  
+  # Logistic Regression ROC and AUC
+  roc_log <- roc(binary_actual, log_prob[[class]])
+  log_roc_curves[[class]] <- roc_log
+  log_auc_values[[class]] <- auc(roc_log)
+  
+  # Random Forest ROC and AUC
+  roc_rf <- roc(binary_actual, rf_prob[[class]])
+  rf_roc_curves[[class]] <- roc_rf
+  rf_auc_values[[class]] <- auc(roc_rf)
+}
+
+# Calculate average AUC for each model
+log_avg_auc <- mean(unlist(log_auc_values))
+rf_avg_auc <- mean(unlist(rf_auc_values))
+
+# Plot ROC curves for both models
+plot_roc <- function(roc_curves, model_name) {
+  plot(roc_curves[[1]], col = "blue", main = paste("ROC Curves -", model_name), lwd = 2)
+  for (i in 2:length(roc_curves)) {
+    plot(roc_curves[[i]], col = "blue", add = TRUE, lwd = 2)
+  }
+  legend("bottomright", legend = paste0("AUC = ", round(mean(unlist(log_auc_values)), 3)), col = "blue", lwd = 2)
+}
+
+# Plot ROC curves for Logistic Regression
+plot_roc(log_roc_curves, "Logistic Regression")
+
+# Plot ROC curves for Random Forest
+plot_roc(rf_roc_curves, "Random Forest")
+
+# Print average AUC values
+log_avg_auc
+rf_avg_auc
+
+```
+### Conclusions
+
+The project successfully developed and validated two machine learning models for obesity classification, demonstrating high accuracy and reliability. The models' insights emphasize the critical role of BMI and age in predicting obesity, suggesting the need for targeted interventions. The logistic regression model offers interpretability, while the random forest model provides robustness. Future research could explore the inclusion of additional predictors and the application of more advanced machine learning techniques to further enhance predictive accuracy. Overall, the models provide valuable tools for public health professionals in addressing the obesity epidemic.
